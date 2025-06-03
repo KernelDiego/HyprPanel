@@ -59,18 +59,44 @@ export async function forMonitors(
         return [];
     }
 
-    const monitorCount = display.get_n_monitors();
-    const gdkMonitorService = GdkMonitorService.getInstance();
+    const monitorCount = display?.get_n_monitors();
+    const gdkMonitorService = GdkMonitorService?.getInstance();
     const monitorMappings: MonitorMapping[] = [];
 
+    if (gdkMonitorService === null) {
+        console.error('[forMonitors] GdkMonitorService is not initialized');
+        return [];
+    }
+
     for (let gdkMonitorIndex = 0; gdkMonitorIndex < monitorCount; gdkMonitorIndex++) {
-        const monitor = display.get_monitor(gdkMonitorIndex);
+        const monitor = display?.get_monitor(gdkMonitorIndex);
         if (monitor === null) {
             console.warn(`[forMonitors] Skipping invalid monitor at index ${gdkMonitorIndex}`);
             continue;
         }
 
-        const hyprlandId = gdkMonitorService.mapGdkToHyprland(gdkMonitorIndex);
+        const refreshRate = monitor?.get_refresh_rate() / 1000; // Convertir a Hz
+        const geometry = monitor?.get_geometry();
+        const manufacturer = monitor?.get_manufacturer();
+        const model = monitor?.get_model();
+
+        // A headless monitor is usually created when a screenshot is taken
+        // For create: hyprctl 'output create headless test;'
+        // For remove: hyprctl 'output remove test;'
+
+        // Verify if it is headless
+        const isHeadless =
+            refreshRate < 1 || // Very low refresh rate (like 0.06Hz)
+            geometry.width === 0 || // No valid geometry
+            geometry.height === 0 || // No valid geometry
+            (!manufacturer && !model); // No manufacturer information (for checking)
+
+        const hyprlandId = gdkMonitorService?.mapGdkToHyprland(gdkMonitorIndex);
+
+        if (isHeadless || hyprlandId === undefined || hyprlandId === null) {
+            console.log(`[forMonitors] Skipping headless or unmapped monitor at index ${gdkMonitorIndex}`);
+            continue;
+        }
 
         monitorMappings.push({
             gdkIndex: gdkMonitorIndex,
