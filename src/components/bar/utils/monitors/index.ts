@@ -88,5 +88,5 @@ export async function forMonitors(
     });
     const widgets = await Promise.all(monitorPromises);
 
-    return widgets.filter((w): w is JSXElement => w !== null);
+    return widgets.filter((w: JSXElement) => w !== null);
 }
